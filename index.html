@@ -67,6 +67,17 @@
       color: var(--text-1);
     }
     .note { margin-top: 12px; font-size: 13px; color: var(--text-subtle); }
+
+    .whats-new { word-break: keep-all; margin-top: 28px; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+    .whats-new h2 { margin-bottom: 4px; }
+    .wn-meta { font-size: 13px; font-weight: 500; color: var(--text-subtle); margin-left: 6px; }
+    .whats-new h3 { font-size: 14px; font-weight: 600; color: var(--text-1); margin-top: 14px; margin-bottom: 4px; }
+    .whats-new ul { padding-left: 18px; color: var(--text-muted); font-size: 14px; }
+    .whats-new li + li { margin-top: 4px; }
+    .whats-new p { color: var(--text-muted); font-size: 14px; margin-top: 6px; }
+    .update-note { word-break: keep-all; margin-top: 14px; font-size: 13px; color: var(--text-subtle); }
+    .update-note strong { color: var(--text-muted); font-weight: 600; }
+    .wn-more { display: inline-block; margin-top: 16px; font-size: 13px; color: var(--text-muted); text-underline-offset: 3px; }
     [hidden] { display: none !important; }
     ::selection { background: #1e3a8a; color: #fff; }
   </style>
@@ -93,6 +104,15 @@
       ·
       <a href="https://github.com/eosangkyung-jpg/CCS_CrazyCatStatus/releases">모든 버전</a>
     </p>
+
+    <!-- 이번 업데이트: 페이지를 열 때 GitHub의 최신 Release 안내 글(docs/releases/v버전.md)을 가져와 보여 준다. 못 가져오면 숨긴 채로 둔다. -->
+    <div class="whats-new" id="whatsNew" hidden>
+      <h2>이번 업데이트 <span class="wn-meta" id="whatsNewMeta"></span></h2>
+      <div id="whatsNewBody"></div>
+      <a class="wn-more" href="https://github.com/eosangkyung-jpg/CCS_CrazyCatStatus/releases">지난 업데이트 보기 →</a>
+    </div>
+    <!-- 업데이트 칸을 못 가져와도 보이도록 칸 밖에 둔다 -->
+    <p class="update-note"><strong>이미 쓰고 있다면:</strong> 트레이(맥은 메뉴 막대)의 고양이 아이콘에서 <strong>CCS 종료</strong>를 누른 뒤, 새로 받아 덮어 설치하세요. 설정은 그대로 남아요.</p>
 
     <section>
       <h2>시작하기 전에</h2>
@@ -149,6 +169,59 @@
         btn.href = BASE + 'CCS-Setup.exe';
         label.textContent = 'Windows용 다운로드';
         guideMac.hidden = true;
+      }
+    })();
+
+    // 이번 업데이트: 최신 Release 안내 글을 가져와 보여 준다 (글자로만 넣고 HTML로 해석하지 않는다)
+    (function () {
+      var API = 'https://api.github.com/repos/eosangkyung-jpg/CCS_CrazyCatStatus/releases/latest';
+      // 이 페이지에서 보여 줄 필요가 없는 칸 (안내 글에서 다운로드 페이지로 오라는 칸)
+      var SKIP = ['업데이트 방법'];
+      if (!window.fetch) return;
+
+      fetch(API, { headers: { Accept: 'application/vnd.github+json' } })
+        .then(function (res) { if (!res.ok) throw new Error(res.status); return res.json(); })
+        .then(function (rel) {
+          var body = document.getElementById('whatsNewBody');
+          var list = null;
+          var skipping = false;
+          (rel.body || '').split(/\r?\n/).forEach(function (raw) {
+            var line = raw.trim();
+            if (!line || /^# /.test(line)) { list = null; return; }
+            var h = line.match(/^##+\s+(.*)/);
+            if (h) {
+              list = null;
+              skipping = SKIP.indexOf(h[1].trim()) !== -1;
+              if (!skipping) body.appendChild(el('h3', h[1]));
+              return;
+            }
+            if (skipping) return;
+            var item = line.match(/^[-*]\s+(.*)/);
+            if (item) {
+              if (!list) { list = el('ul'); body.appendChild(list); }
+              list.appendChild(el('li', item[1]));
+              return;
+            }
+            list = null;
+            body.appendChild(el('p', line));
+          });
+          if (!body.childNodes.length) return;
+
+          var meta = rel.tag_name || '';
+          if (rel.published_at) {
+            try {
+              meta += ' · ' + new Date(rel.published_at).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
+            } catch (e) {}
+          }
+          document.getElementById('whatsNewMeta').textContent = meta;
+          document.getElementById('whatsNew').hidden = false;
+        })
+        .catch(function () { /* 못 가져오면 칸을 숨긴 채로 둔다 */ });
+
+      function el(tag, text) {
+        var node = document.createElement(tag);
+        if (text) node.textContent = text.replace(/\*\*(.+?)\*\*/g, '$1').replace(/`([^`]+)`/g, '$1');
+        return node;
       }
     })();
   </script>
